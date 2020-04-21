@@ -2,6 +2,7 @@
 data/
 replication/data/
 trends/data/
+replication/temp/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
