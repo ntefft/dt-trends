@@ -8,6 +8,7 @@ This is a collection of utility functions that are to be used for the Levitt and
 """
 # import necessary packages
 import numpy,pandas,time
+import estimate
 
 # returns a dataframe of drivers, from the person file. Defaults to drop crashes with multiple drivers in at least one of the driver's seats.
 def get_driver(df_person, keep_duplicated = False, keep_per_no = False):
@@ -356,7 +357,7 @@ def calc_drinking_externality(df_accident,df_vehicle,df_person,df_window,equal_m
             df_window_estimates = df_window.merge(pandas.DataFrame(index=df_window.index,columns=['theta','lambda','prevalence'],dtype=numpy.float64),on=['year'])
             for wyr in df_window.index.to_numpy():
                 analytic_sample = get_analytic_sample(df_externality.merge(df_accident,on=['year','st_case']),
-                        df_vehicle,df_person,(wyr-4),wyr,20,4,'impaired_vs_sober',
+                        df_vehicle,df_person,(wyr-4),wyr,20,4,'bac_test_primary',
                         bac_threshold=bac_threshold,state_year_prop_threshold=1,mireps=mireps,summarize_sample=False)
                 # because we're bootstrapping the entire calculation, hack fit_model by just estimating 1 bootstrap replicate
                 mod_res,model_llf,model_df_resid = estimate.fit_model(analytic_sample,equal_mixing,2,bsreps=1,mirep=(miidx+1))
