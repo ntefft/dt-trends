@@ -33,21 +33,21 @@ df_person.set_index(['year','st_case','veh_no','per_no'],inplace=True) # set the
 
 # set estimation parameters
 window = 5 # length of estimation window
-windows_end = list(range(1987,2018,window)) # list of windows year ends
-# windows_end = list(range(2017,2018,window)) # list of windows year ends
-# bsreps = 2 # bootstrap replicates for testing
-bsreps = 100 # bootstrap replicates for analysis
-# mireps = 2 # multiple imputation replicates, for testing
-mireps = 10 # multiple imputation replicates for analysis (FARS includes a total of 10)
-# results_folder = 'trends\\temp' # for testing
-results_folder = 'trends\\results' # for saving estimation results
+# windows_end = list(range(1987,2018,window)) # list of windows year ends
+windows_end = list(range(2017,2018,window)) # list of windows year ends
+bsreps = 2 # bootstrap replicates for testing
+# bsreps = 100 # bootstrap replicates for analysis
+mireps = 2 # multiple imputation replicates, for testing
+# mireps = 10 # multiple imputation replicates for analysis (FARS includes a total of 10)
+results_folder = 'trends\\temp' # for testing
+# results_folder = 'trends\\results' # for saving estimation results
 if not os.path.exists(results_folder):
         os.makedirs(results_folder) # generate results directory, if it doesn't exist
 
 # TABLE 1: Summary statistics for fatal crashes by 5-year interval
 sum_stats = list()
 for eyr in windows_end:
-    analytic_sample = util.get_analytic_sample(df_accident,df_vehicle,df_person,(eyr-window+1),eyr,20,4,'bac_test_primary',
+    analytic_sample = util.get_analytic_sample(df_accident,df_vehicle,df_person,(eyr-window+1),eyr,20,4,'bac_test_only',
                         bac_threshold=0,state_year_prop_threshold=1,mireps=mireps,summarize_sample=True)
     sum_stats.append(analytic_sample.sum_stats)
 sum_stats_df = pandas.DataFrame(sum_stats,columns=['Window start year','Window end year','Number of fatal one-car crashes',
@@ -61,7 +61,7 @@ random.seed(1) # for exactly replicating the bootstrapped sample
 res_fmt = list() # formatted results for table
 for eyr in windows_end:
     print("Estimating model for " + str(eyr)) 
-    analytic_sample = util.get_analytic_sample(df_accident,df_vehicle,df_person,(eyr-window+1),eyr,20,4,'bac_test_primary',
+    analytic_sample = util.get_analytic_sample(df_accident,df_vehicle,df_person,(eyr-window+1),eyr,20,4,'bac_test_only',
                         bac_threshold=0,state_year_prop_threshold=1,mireps=mireps,summarize_sample=False)
     mod_res,model_llf,model_df_resid = estimate.fit_model_mi(analytic_sample,['year','state','weekend','hour'],2,bsreps,mireps)
     res_fmt.append([(eyr-window+1),round(mod_res[0][0][0],2),round(mod_res[0][1][0],2),round(mod_res[0][3][0],6)])
@@ -74,11 +74,11 @@ random.seed(1) # for exactly replicating the bootstrapped sample
 res_fmt = list() # formatted results for table
 for eyr in windows_end:
     print("Estimating model for " + str(eyr)) 
-    analytic_sample = util.get_analytic_sample(df_accident,df_vehicle,df_person,(eyr-window+1),eyr,20,4,'bac_test_primary',
+    analytic_sample = util.get_analytic_sample(df_accident,df_vehicle,df_person,(eyr-window+1),eyr,20,4,'bac_test_only',
                         bac_threshold=0.08,state_year_prop_threshold=1,mireps=mireps,summarize_sample=False)
     mod_res,model_llf,model_df_resid = estimate.fit_model_mi(analytic_sample,['year','state','weekend','hour'],2,bsreps,mireps)
     # estimatine proportions separately so that we don't drop BAC values between 0 and 0.08
-    analytic_sample_p = util.get_analytic_sample(df_accident,df_vehicle,df_person,(eyr-window+1),eyr,20,4,'bac_test_primary',
+    analytic_sample_p = util.get_analytic_sample(df_accident,df_vehicle,df_person,(eyr-window+1),eyr,20,4,'bac_test_only',
                         bac_threshold=0.08,state_year_prop_threshold=1,mireps=mireps,summarize_sample=False,drop_below_threshold=False)
     mod_res_p,model_llf_p,model_df_resid_p = estimate.fit_model_mi(analytic_sample_p,['year','state','weekend','hour'],2,bsreps,mireps)
     res_fmt.append([(eyr-window+1),round(mod_res[0][0][0],2),round(mod_res[0][1][0],2),round(mod_res_p[0][3][0],6)])
@@ -101,3 +101,4 @@ for idx in range(0,df_window.index.size):
     res_fmt.append(['','('+str(round(mod_res0[1][idx][2],4))+')','('+str(round(mod_res8[1][idx][2],4))+')'])
 res_fmt_df = pandas.DataFrame(res_fmt,columns=['year range','BAC > 0','BAC > 0.08'])
 res_fmt_df.to_excel(results_folder + '\\table4.xlsx') # Note: should format as text after opening Excel file
+

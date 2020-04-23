@@ -67,6 +67,7 @@ def veh_dr_drinking_status(df_vehicle, df_driver, drinking_definition, bac_thres
             df_driver_drink_status = df_driver_drink_status.mask((driver_bac<=bac_threshold_scaled).to_numpy(), 0)
         else:
             df_driver_drink_status = df_driver_drink_status.mask((driver_bac==0).to_numpy(), 0)
+            df_driver_drink_status = df_driver_drink_status.mask((driver_bac>0).to_numpy() & (driver_bac<=bac_threshold_scaled).to_numpy(), numpy.nan)
         df_driver_drink_status = df_driver_drink_status.mask((driver_bac>bac_threshold_scaled).to_numpy(), 1)
         df_driver_drink_status = df_driver_drink_status.replace({8:numpy.nan, 9:numpy.nan})        
     elif drinking_definition == 'impaired_vs_sober': # definition 5 in Levitt & Porter (2001)
@@ -81,6 +82,18 @@ def veh_dr_drinking_status(df_vehicle, df_driver, drinking_definition, bac_thres
             dr_drink = pandas.concat([df_veh_driver['dr_drink']]*mireps,axis=1)
         df_driver_drink_status = df_driver_drink_status.mask((driver_bac==0).to_numpy() | (dr_drink==0).to_numpy(), 0)
         df_driver_drink_status = df_driver_drink_status.mask((driver_bac!=0).to_numpy() & (~driver_bac.isnull()).to_numpy() & (driver_bac>=bac_threshold_scaled).to_numpy() & (dr_drink!=0).to_numpy(), 1)
+    elif drinking_definition == 'bac_test_only': # new definition that should be used when running MI with BAC only
+        if mireps == False:
+            df_driver_drink_status = pandas.Series(index=df_veh_driver.index,data=numpy.nan)
+        else:
+            df_driver_drink_status = pandas.DataFrame(index=df_veh_driver.index)
+            for mirep in range(0,mireps):
+                df_driver_drink_status['drink_status' + str(mirep+1)] = numpy.nan
+        if drop_below_threshold == False:
+            df_driver_drink_status = df_driver_drink_status.mask((driver_bac<=bac_threshold_scaled).to_numpy(), 0)
+        else:
+            df_driver_drink_status = df_driver_drink_status.mask((driver_bac==0).to_numpy(), 0)
+        df_driver_drink_status = df_driver_drink_status.mask((driver_bac>bac_threshold_scaled).to_numpy(), 1)
     
     if mireps == False:
         df_driver_drink_status = df_driver_drink_status.rename('drink_status')
@@ -357,7 +370,7 @@ def calc_drinking_externality(df_accident,df_vehicle,df_person,df_window,equal_m
             df_window_estimates = df_window.merge(pandas.DataFrame(index=df_window.index,columns=['theta','lambda','prevalence'],dtype=numpy.float64),on=['year'])
             for wyr in df_window.index.to_numpy():
                 analytic_sample = get_analytic_sample(df_externality.merge(df_accident,on=['year','st_case']),
-                        df_vehicle,df_person,(wyr-4),wyr,20,4,'bac_test_primary',
+                        df_vehicle,df_person,(wyr-4),wyr,20,4,'bac_test_only',
                         bac_threshold=bac_threshold,state_year_prop_threshold=1,mireps=mireps,summarize_sample=False)
                 # because we're bootstrapping the entire calculation, hack fit_model by just estimating 1 bootstrap replicate
                 mod_res,model_llf,model_df_resid = estimate.fit_model(analytic_sample,equal_mixing,2,bsreps=1,mirep=(miidx+1))
