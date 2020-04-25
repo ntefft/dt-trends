@@ -35,12 +35,13 @@ df_person.set_index(['year','st_case','veh_no','per_no'],inplace=True) # set the
 window = 5 # length of estimation window
 windows_end = list(range(1987,2018,window)) # list of windows year ends
 # windows_end = list(range(2017,2018,window)) # list of windows year ends
-bsreps = 1 # bootstrap replicates for testing
+# bsreps = 1 # bootstrap replicates for testing
+bsreps = 10 # bootstrap replicates for testing
 # bsreps = 100 # bootstrap replicates for analysis
 # mireps = 2 # multiple imputation replicates, for testing
 mireps = 10 # multiple imputation replicates for analysis (FARS includes a total of 10)
-results_folder = 'trends\\temp' # for testing
-# results_folder = 'trends\\results' # for saving estimation results
+# results_folder = 'trends\\temp' # for testing
+results_folder = 'trends\\results' # for saving estimation results
 if not os.path.exists(results_folder):
         os.makedirs(results_folder) # generate results directory, if it doesn't exist
 
