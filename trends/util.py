@@ -71,17 +71,18 @@ def veh_dr_drinking_status(df_vehicle, df_driver, drinking_definition, bac_thres
         df_driver_drink_status = df_driver_drink_status.mask((driver_bac>bac_threshold_scaled).to_numpy(), 1)
         df_driver_drink_status = df_driver_drink_status.replace({8:numpy.nan, 9:numpy.nan})        
     elif drinking_definition == 'impaired_vs_sober': # definition 5 in Levitt & Porter (2001)
-        df_driver_drink_status = pandas.Series(index=df_veh_driver.index)
         if mireps == False:
-            df_driver_drink_status = pandas.Series(index=df_veh_driver.index)
             dr_drink = df_veh_driver['dr_drink']
+            df_driver_drink_status = pandas.Series(index=df_veh_driver.index,data=numpy.nan)
         else:
+            dr_drink = pandas.concat([df_veh_driver['dr_drink']]*mireps,axis=1)    
             df_driver_drink_status = pandas.DataFrame(index=df_veh_driver.index)
             for mirep in range(0,mireps):
-                df_driver_drink_status['drink_status' + str(mirep+1)] = numpy.nan
-            dr_drink = pandas.concat([df_veh_driver['dr_drink']]*mireps,axis=1)
-        df_driver_drink_status = df_driver_drink_status.mask((driver_bac==0).to_numpy() | (dr_drink==0).to_numpy(), 0)
-        df_driver_drink_status = df_driver_drink_status.mask((driver_bac!=0).to_numpy() & (~driver_bac.isnull()).to_numpy() & (driver_bac>=bac_threshold_scaled).to_numpy() & (dr_drink!=0).to_numpy(), 1)
+                df_driver_drink_status['drink_status' + str(mirep+1)] = numpy.nan    
+        df_driver_drink_status = df_driver_drink_status.mask((driver_bac==0).to_numpy() | (dr_drink==0).to_numpy(), 0)    
+        if drop_below_threshold == False:
+            df_driver_drink_status = df_driver_drink_status.mask((driver_bac<=bac_threshold_scaled).to_numpy() | (dr_drink==0).to_numpy(), 0)        
+        df_driver_drink_status = df_driver_drink_status.mask((driver_bac>bac_threshold_scaled).to_numpy(), 1)
     elif drinking_definition == 'bac_test_only': # new definition that should be used when running MI with BAC only
         if mireps == False:
             df_driver_drink_status = pandas.Series(index=df_veh_driver.index,data=numpy.nan)
@@ -89,11 +90,18 @@ def veh_dr_drinking_status(df_vehicle, df_driver, drinking_definition, bac_thres
             df_driver_drink_status = pandas.DataFrame(index=df_veh_driver.index)
             for mirep in range(0,mireps):
                 df_driver_drink_status['drink_status' + str(mirep+1)] = numpy.nan
+        df_driver_drink_status = df_driver_drink_status.mask((driver_bac==0).to_numpy(), 0)
         if drop_below_threshold == False:
             df_driver_drink_status = df_driver_drink_status.mask((driver_bac<=bac_threshold_scaled).to_numpy(), 0)
-        else:
-            df_driver_drink_status = df_driver_drink_status.mask((driver_bac==0).to_numpy(), 0)
         df_driver_drink_status = df_driver_drink_status.mask((driver_bac>bac_threshold_scaled).to_numpy(), 1)
+    
+    if mireps == False:
+        df_driver_drink_status = df_driver_drink_status.rename('drink_status')
+    else:
+        for mirep in range(0,mireps):
+            df_driver_drink_status.columns.values[mirep] = 'drink_status' + str(mirep+1)
+    
+    return df_driver_drink_status
     
     if mireps == False:
         df_driver_drink_status = df_driver_drink_status.rename('drink_status')
@@ -104,7 +112,7 @@ def veh_dr_drinking_status(df_vehicle, df_driver, drinking_definition, bac_thres
     return df_driver_drink_status
 
 # identifies accidents with missing data (that are relevant for exclusion from L&P estimation)
-def accident_missing_data(df_accident,df_vehicle,df_driver,drinking_definition,bac_threshold,mireps,drop_below_threshold):
+def accident_missing_data(df_accident,df_vehicle,df_driver,drinking_definition,bac_threshold,mireps):
     # collect missing info about the driver
     df_dr_miss = pandas.DataFrame(index=df_driver.index)
     df_dr_miss['miss_age'] = (df_driver['age'].isnull()) | (df_driver['age'] < 13) # set child drivers as missing values
@@ -115,7 +123,7 @@ def accident_missing_data(df_accident,df_vehicle,df_driver,drinking_definition,b
     df_veh_miss['miss_minor_blemishes'] = (df_vehicle['prev_acc'].isnull() | df_vehicle['prev_spd'].isnull() | df_vehicle['prev_oth'].isnull()) 
     df_veh_miss['miss_major_blemishes'] = (df_vehicle['prev_sus'].isnull() | df_vehicle['prev_dwi'].isnull()) 
     df_veh_miss['miss_any_blemishes'] = (df_veh_miss['miss_minor_blemishes'] | df_veh_miss['miss_major_blemishes']) 
-    df_veh_miss['miss_drinking_status'] = pandas.DataFrame(veh_dr_drinking_status(df_vehicle, df_driver, drinking_definition, bac_threshold, mireps, drop_below_threshold)).isnull().any(axis='columns')
+    df_veh_miss['miss_drinking_status'] = pandas.DataFrame(veh_dr_drinking_status(df_vehicle, df_driver, drinking_definition, bac_threshold, mireps, drop_below_threshold=False)).isnull().any(axis='columns')
     
     # collect missing info about the accident
     df_acc_miss = pandas.DataFrame(index=df_accident.index)
@@ -133,8 +141,8 @@ def accident_missing_data(df_accident,df_vehicle,df_driver,drinking_definition,b
 
 # from the extracted FARS variables, builds the analytic sample of accident-vehicle-drivers
 # allows several parameters to be set for selecting the analytic sample to be used
-def get_analytic_sample(df_accident,df_vehicle,df_person,first_year,last_year,earliest_hour, 
-                        latest_hour,drinking_definition,bac_threshold,state_year_prop_threshold,
+def get_analytic_sample(df_accident,df_vehicle,df_person,first_year,last_year,earliest_hour=20, 
+                        latest_hour=4,drinking_definition='bac_test_only',bac_threshold=0,state_year_prop_threshold=1,
                         mireps=False,summarize_sample=True,drop_below_threshold=True):
     
     sum_stats = list() # list of summary stats, generated for paper table(s)
@@ -251,7 +259,7 @@ def get_analytic_sample(df_accident,df_vehicle,df_person,first_year,last_year,ea
     # get dataframe of booleans indicating whether each variable has missing data (or all of them are missing)
     df_acc_miss_flag = accident_missing_data(analytic_sample, df_vehicle[df_vehicle.index.droplevel('veh_no').isin(analytic_sample.index)],
                                              get_driver(df_person[df_person.index.droplevel(['veh_no','per_no']).isin(analytic_sample.index)]),
-                                             drinking_definition, bac_threshold, mireps, drop_below_threshold)
+                                             drinking_definition, bac_threshold, mireps)
     if summarize_sample == True:    
         print('Proportion of accidents missing information about various and any characteristics:')
         print(df_acc_miss_flag.mean())
@@ -283,13 +291,14 @@ def get_analytic_sample(df_accident,df_vehicle,df_person,first_year,last_year,ea
         tmp_driver = get_driver(df_person[df_person.index.droplevel(['veh_no','per_no']).isin(analytic_sample.index)])
         tmp_vehicle = df_vehicle[df_vehicle.index.isin(tmp_driver.index)]
         tmp_driver_veh = get_driver(df_person[df_person.index.droplevel(['veh_no','per_no']).isin(analytic_sample.index)]).merge(df_vehicle,how='inner',on=['year','st_case','veh_no'])        
-        # for summary stats table, report statistics without using MI
+        # for summary stats table, first report police-reported drinking statuses
         tmp_driver_veh['drink_status_nomi'] = numpy.nan
-        tmp_driver_veh.loc[veh_dr_drinking_status(tmp_vehicle, tmp_driver, drinking_definition, bac_threshold, False, drop_below_threshold)==0,'drink_status_nomi'] = 0
-        tmp_driver_veh.loc[veh_dr_drinking_status(tmp_vehicle, tmp_driver, drinking_definition, bac_threshold, False, drop_below_threshold)==1,'drink_status_nomi'] = 1
+        tmp_driver_veh.loc[veh_dr_drinking_status(tmp_vehicle, tmp_driver, 'police_report_only', bac_threshold, mireps=False, drop_below_threshold=False)==0,'drink_status_nomi'] = 0
+        tmp_driver_veh.loc[veh_dr_drinking_status(tmp_vehicle, tmp_driver, 'police_report_only', bac_threshold, mireps=False, drop_below_threshold=False)==1,'drink_status_nomi'] = 1
         sum_stats.append((tmp_driver_veh['drink_status_nomi']==1).mean())
         sum_stats.append((tmp_driver_veh['drink_status_nomi']==0).mean())
         sum_stats.append((tmp_driver_veh['drink_status_nomi'].isnull()).mean())
+        # next look at the drinking status according to the supplied definition (should be bac_test_only for MI)
         if mireps == False:
             tmp_driver_veh['drink_status'] = veh_dr_drinking_status(tmp_vehicle, tmp_driver, drinking_definition, bac_threshold, mireps, drop_below_threshold)
         else:
@@ -370,12 +379,15 @@ def calc_drinking_externality(df_accident,df_vehicle,df_person,df_window,equal_m
             df_window_estimates = df_window.merge(pandas.DataFrame(index=df_window.index,columns=['theta','lambda','prevalence'],dtype=numpy.float64),on=['year'])
             for wyr in df_window.index.to_numpy():
                 analytic_sample = get_analytic_sample(df_externality.merge(df_accident,on=['year','st_case']),
-                        df_vehicle,df_person,(wyr-4),wyr,20,4,'bac_test_only',
-                        bac_threshold=bac_threshold,state_year_prop_threshold=1,mireps=mireps,summarize_sample=False)
+                        df_vehicle,df_person,(wyr-4),wyr,bac_threshold=bac_threshold,mireps=mireps,summarize_sample=False)
                 # because we're bootstrapping the entire calculation, hack fit_model by just estimating 1 bootstrap replicate
                 mod_res,model_llf,model_df_resid = estimate.fit_model(analytic_sample,equal_mixing,2,bsreps=1,mirep=(miidx+1))
                 df_window_estimates.at[wyr,'theta'] = mod_res[0][0][0]
                 df_window_estimates.at[wyr,'lambda'] = mod_res[0][1][0]
+                if bac_threshold!=0:
+                    analytic_sample = get_analytic_sample(df_externality.merge(df_accident,on=['year','st_case']),
+                        df_vehicle,df_person,(wyr-4),wyr,bac_threshold=bac_threshold,mireps=mireps,summarize_sample=False,
+                        drop_below_threshold=False)
                 df_window_estimates.at[wyr,'prevalence'] = mod_res[0][2][0]/(1+mod_res[0][2][0]) # N is converted to prevalence
             
             # merge in relevant person info (don't need any vehicle info, and it makes merging more challenging)
