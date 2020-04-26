@@ -316,6 +316,7 @@ def get_analytic_sample(df_accident,df_vehicle,df_person,first_year,last_year,ea
         print(tmp_driver_veh[['drink_status','male','age_lt25','bad_record','male_and_drinking',
                               'age_lt25_and_drinking','bad_record_and_drinking']].mean())
         # Note that for MI, average (vote) across MI replicates to determine whether driver is drinking
+        # NEED TO ADD STANDARD ERRORS FOR THESE
         print('Percentage of fatal one-car crashes with zero or one drinking driver: ')
         print((round(tmp_driver_veh[tmp_driver_veh.index.droplevel('veh_no').isin(analytic_sample.loc[analytic_sample['acc_veh_count']==1].index)]['drink_status'].groupby(['year','st_case']).mean()).value_counts().to_numpy()/len(analytic_sample.loc[analytic_sample['acc_veh_count']==1])))
         for item in (round(tmp_driver_veh[tmp_driver_veh.index.droplevel('veh_no').isin(analytic_sample.loc[analytic_sample['acc_veh_count']==1].index)]['drink_status'].groupby(['year','st_case']).mean()).value_counts().to_numpy()/len(analytic_sample.loc[analytic_sample['acc_veh_count']==1])).tolist():
