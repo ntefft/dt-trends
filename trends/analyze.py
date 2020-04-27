@@ -7,7 +7,7 @@ Created on Fri Nov 8 2019
 This script generates summary statistics and estimation analysis results for a nationwide trends analysis
 of Levitt and Porter (2001).
 """
-import os, pandas, random
+import os, pandas
 
 """
    USER-DEFINED ATTRIBUTES 
@@ -35,13 +35,13 @@ df_person.set_index(['year','st_case','veh_no','per_no'],inplace=True) # set the
 window = 5 # length of estimation window
 windows_end = list(range(1987,2018,window)) # list of windows year ends
 # windows_end = list(range(2017,2018,window)) # list of windows year ends
-# bsreps = 1 # bootstrap replicates for testing
-bsreps = 10 # bootstrap replicates for testing
+bsreps = 2 # bootstrap replicates for testing
+# bsreps = 10 # bootstrap replicates for testing
 # bsreps = 100 # bootstrap replicates for analysis
 # mireps = 2 # multiple imputation replicates, for testing
 mireps = 10 # multiple imputation replicates for analysis (FARS includes a total of 10)
-# results_folder = 'trends\\temp' # for testing
-results_folder = 'trends\\results' # for saving estimation results
+results_folder = 'trends\\temp' # for testing
+# results_folder = 'trends\\results' # for saving estimation results
 if not os.path.exists(results_folder):
         os.makedirs(results_folder) # generate results directory, if it doesn't exist
 
@@ -51,14 +51,11 @@ for eyr in windows_end:
     analytic_sample = util.get_analytic_sample(df_accident,df_vehicle,df_person,(eyr-window+1),eyr,
                         bac_threshold=0,mireps=mireps,summarize_sample=True)
     sum_stats.append(analytic_sample.sum_stats)
-sum_stats_df = pandas.DataFrame(sum_stats,columns=['Window start year','Window end year','Number of fatal one-car crashes',
-                'Number of fatal two-car crashes','Reported to be drinking by police','Reported to not be drinking by police',
-                'Drinking status unreported by police','One drinking driver','One sober driver','One drinking, one sober driver',
-                'Two sober drivers','Two drinking drivers'])
+sum_stats_labels = ['Window start year','Window end year'] + analytic_sample.sum_stats_labels
+sum_stats_df = pandas.DataFrame(sum_stats,columns=sum_stats_labels)
 sum_stats_df.T.to_excel(results_folder + '\\table1.xlsx') # Note: should format as text after opening Excel file
 
 # TABLE 2: Relative Risk and Prevalence of Alcohol-involved Driving by 5 year interval (BAC > 0)
-random.seed(1) # for exactly replicating the bootstrapped sample
 res_fmt = list() # formatted results for table
 for eyr in windows_end:
     print("Estimating model for " + str(eyr)) 
@@ -71,7 +68,6 @@ res_fmt_df = pandas.DataFrame(res_fmt,columns=['year range','theta','lambda','pr
 res_fmt_df.to_excel(results_folder + '\\table2.xlsx') # Note: should format as text after opening Excel file
 
 # TABLE 3: Relative Risk and Prevalence of Alcohol-involved Driving by 5 year interval (BAC > 0.08)
-random.seed(1) # for exactly replicating the bootstrapped sample
 res_fmt = list() # formatted results for table
 for eyr in windows_end:
     print("Estimating model for " + str(eyr)) 
@@ -88,7 +84,6 @@ res_fmt_df = pandas.DataFrame(res_fmt,columns=['year range','theta','lambda','pr
 res_fmt_df.to_excel(results_folder + '\\table3.xlsx') # Note: should format as text after opening Excel file
 
 # TABLE 4: External cost per mile driven by year and driver BAC level
-random.seed(1) # for exactly replicating the bootstrapped sample
 # here, include the end years of the calculation window, vehicle miles traveled from NHTSA, DOT VSL (using most recent)
 df_window = pandas.DataFrame(data={'year':windows_end,
                                    'annual_vmt':[1924330000000,2247150000000,2560370000000,2829340000000,3003200000000,2938500000000,3208500000000],
@@ -102,3 +97,4 @@ for idx in range(0,df_window.index.size):
     res_fmt.append(['','('+str(round(mod_res0[1][idx][2],4))+')','('+str(round(mod_res8[1][idx][2],4))+')'])
 res_fmt_df = pandas.DataFrame(res_fmt,columns=['year range','BAC > 0','BAC > 0.08'])
 res_fmt_df.to_excel(results_folder + '\\table4.xlsx') # Note: should format as text after opening Excel file
+

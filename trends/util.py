@@ -144,7 +144,7 @@ def accident_missing_data(df_accident,df_vehicle,df_driver,drinking_definition,b
 def get_analytic_sample(df_accident,df_vehicle,df_person,first_year,last_year,earliest_hour=20, 
                         latest_hour=4,drinking_definition='bac_test_only',bac_threshold=0,state_year_prop_threshold=1,
                         mireps=False,summarize_sample=True,drop_below_threshold=True):
-    
+
     sum_stats = list() # list of summary stats, generated for paper table(s)
     sum_stats.append(first_year)
     sum_stats.append(last_year)
@@ -302,7 +302,9 @@ def get_analytic_sample(df_accident,df_vehicle,df_person,first_year,last_year,ea
         if mireps == False:
             tmp_driver_veh['drink_status'] = veh_dr_drinking_status(tmp_vehicle, tmp_driver, drinking_definition, bac_threshold, mireps, drop_below_threshold)
         else:
-            # Note that "drink_status" here is the mean across multiply imputed values for MI
+            # NEED TO ADD STANDARD ERRORS FOR THESE
+            tmp_driver_veh = tmp_driver_veh.merge(veh_dr_drinking_status(tmp_vehicle, tmp_driver, drinking_definition, bac_threshold, mireps, drop_below_threshold),how='left',on=['year','st_case','veh_no'])
+            # For now, note that "drink_status" here is the mean across multiply imputed values for MI
             tmp_driver_veh['drink_status'] = veh_dr_drinking_status(tmp_vehicle, tmp_driver, drinking_definition, bac_threshold, mireps, drop_below_threshold).mean(axis='columns')
         tmp_driver_veh['male'] = tmp_driver_veh['sex']==1
         tmp_driver_veh['age_lt25'] = tmp_driver_veh['age'] < 25        
@@ -315,16 +317,20 @@ def get_analytic_sample(df_accident,df_vehicle,df_person,first_year,last_year,ea
         print('Proportions of all drivers in fatal crashes: ')
         print(tmp_driver_veh[['drink_status','male','age_lt25','bad_record','male_and_drinking',
                               'age_lt25_and_drinking','bad_record_and_drinking']].mean())
-        # Note that for MI, average (vote) across MI replicates to determine whether driver is drinking
-        # NEED TO ADD STANDARD ERRORS FOR THESE
-        print('Percentage of fatal one-car crashes with zero or one drinking driver: ')
-        print((round(tmp_driver_veh[tmp_driver_veh.index.droplevel('veh_no').isin(analytic_sample.loc[analytic_sample['acc_veh_count']==1].index)]['drink_status'].groupby(['year','st_case']).mean()).value_counts().to_numpy()/len(analytic_sample.loc[analytic_sample['acc_veh_count']==1])))
-        for item in (round(tmp_driver_veh[tmp_driver_veh.index.droplevel('veh_no').isin(analytic_sample.loc[analytic_sample['acc_veh_count']==1].index)]['drink_status'].groupby(['year','st_case']).mean()).value_counts().to_numpy()/len(analytic_sample.loc[analytic_sample['acc_veh_count']==1])).tolist():
-            sum_stats.append(item)
-        print('Percentage of fatal two-car crashes with zero, one, or two drinking drivers: ')
-        print((round(2*tmp_driver_veh[tmp_driver_veh.index.droplevel('veh_no').isin(analytic_sample.loc[analytic_sample['acc_veh_count']==2].index)]['drink_status'].groupby(['year','st_case']).mean())/2).value_counts().to_numpy()/len(analytic_sample.loc[analytic_sample['acc_veh_count']==2]))
-        for item in ((round(2*tmp_driver_veh[tmp_driver_veh.index.droplevel('veh_no').isin(analytic_sample.loc[analytic_sample['acc_veh_count']==2].index)]['drink_status'].groupby(['year','st_case']).mean())/2).value_counts().to_numpy()/len(analytic_sample.loc[analytic_sample['acc_veh_count']==2])).tolist():
-            sum_stats.append(item)
+   
+        # dimensions are mireps, estimates & standard errors, parameters, driver types relative to type 1
+        reps_theta_se = numpy.zeros((mireps,2,1,5)) # first two results for one-car crashes, next three for two-car crashes
+        for mir in range(0,mireps):
+            # calculate estimate but use 0 for standard error since these are population-level estimates
+            reps_theta_se[mir][0][0] = (tmp_driver_veh[tmp_driver_veh.index.droplevel('veh_no').isin(analytic_sample.loc[analytic_sample['acc_veh_count']==1].index)]['drink_status' + str(mir+1)].groupby(['year','st_case']).mean().value_counts().to_numpy()/len(analytic_sample.loc[analytic_sample['acc_veh_count']==1])).tolist() + ((2*tmp_driver_veh[tmp_driver_veh.index.droplevel('veh_no').isin(analytic_sample.loc[analytic_sample['acc_veh_count']==2].index)]['drink_status' + str(mir+1)].groupby(['year','st_case']).mean()/2).value_counts().to_numpy()/len(analytic_sample.loc[analytic_sample['acc_veh_count']==2])).tolist()
+        mi_results = estimate.mi_theta_se(reps_theta_se)
+        for idx in range(0,5):
+            sum_stats.append(round(mi_results[0][0][idx],3))
+            sum_stats.append('('+str(round(mi_results[1][0][idx],3))+')')
+        print('Percentage of fatal one-car crashes with zero or one drinking driver, then two-car crashes with zero, one, or two drinking drivers, with standard errors: ')
+        print(mi_results[0])
+        print(mi_results[1])
+        
     # generate weekend variable
     analytic_sample['weekend'] = ((analytic_sample['day_week'] == 6) & (analytic_sample['hour'] >= 20)) | (analytic_sample['day_week'] == 7) | ((analytic_sample['day_week'] == 1) & (analytic_sample['hour'] <= 4))
     if summarize_sample == True:    
@@ -353,7 +359,7 @@ def get_analytic_sample(df_accident,df_vehicle,df_person,first_year,last_year,ea
     # add summary stats attribute for building tables
     analytic_sample.sum_stats = sum_stats
     analytic_sample.sum_stats_labels = ['Number of fatal one-car crashes','Number of fatal two-car crashes','Reported to be drinking by police','Reported to not be drinking by police',
-                                        'Drinking status unreported by police','One drinking driver','One sober driver','One drinking, one sober driver','Two sober drivers','Two drinking drivers']
+                                        'Drinking status unreported by police','One drinking driver','','One sober driver','','One drinking, one sober driver','','Two sober drivers','','Two drinking drivers','']
     
     return analytic_sample
 
