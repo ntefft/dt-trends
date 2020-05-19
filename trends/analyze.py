@@ -35,9 +35,9 @@ df_person.set_index(['year','st_case','veh_no','per_no'],inplace=True) # set the
 window = 5 # length of estimation window
 windows_end = list(range(1987,2018,window)) # list of windows year ends
 # windows_end = list(range(2017,2018,window)) # list of windows year ends
-# bsreps = 1 # bootstrap replicates for testing
+bsreps = 1 # bootstrap replicates for testing
 # bsreps = 10 # bootstrap replicates for testing
-bsreps = 50 # bootstrap replicates for analysis
+# bsreps = 50 # bootstrap replicates for analysis
 # bsreps = 100 # bootstrap replicates for analysis
 # mireps = 2 # multiple imputation replicates, for testing
 mireps = 10 # multiple imputation replicates for analysis (FARS includes a total of 10)
@@ -99,3 +99,20 @@ for idx in range(0,df_window.index.size):
 res_fmt_df = pandas.DataFrame(res_fmt,columns=['year range','BAC > 0','BAC > 0.08'])
 res_fmt_df.to_excel(results_folder + '\\table4.xlsx') # Note: should format as text after opening Excel file
 
+# # TABLE X: Varying BAC thresholds
+# res_fmt = list() # formatted results for table
+# for eyr in windows_end:
+#     for bt in range(0,20):    
+#         btp = bt/100
+#         print("Estimating model for BAC threshold " + str(btp)) 
+#         analytic_sample = util.get_analytic_sample(df_accident,df_vehicle,df_person,(eyr-window+1),eyr,
+#                             bac_threshold=btp,mireps=mireps,summarize_sample=False)
+#         mod_res,model_llf,model_df_resid = estimate.fit_model_mi(analytic_sample,['year','state','weekend','hour'],2,bsreps,mireps)
+#         # estimatine proportions separately so that we don't drop BAC values between 0 and 0.08
+#         analytic_sample_p = util.get_analytic_sample(df_accident,df_vehicle,df_person,(eyr-window+1),eyr,
+#                             bac_threshold=btp,mireps=mireps,summarize_sample=False,drop_below_threshold=False)
+#         mod_res_p,model_llf_p,model_df_resid_p = estimate.fit_model_mi(analytic_sample_p,['year','state','weekend','hour'],2,bsreps,mireps)
+#         res_fmt.append([(eyr-window+1),round(mod_res[0][0][0],2),round(mod_res[0][1][0],2),round(mod_res_p[0][3][0],6)])
+#         res_fmt.append([eyr,'('+str(round(mod_res[1][0][0],2))+')','('+str(round(mod_res[1][1][0],2))+')','('+str(format(round(mod_res_p[1][3][0],5),'.5f'))+')'])
+# res_fmt_df = pandas.DataFrame(res_fmt,columns=['year range','theta','lambda','proportion drinking'])
+# res_fmt_df.to_excel(results_folder + '\\tableX.xlsx') # Note: should format as text after opening Excel file
