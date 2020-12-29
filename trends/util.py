@@ -142,7 +142,7 @@ def accident_missing_data(df_accident,df_vehicle,df_driver,drinking_definition,b
 # from the extracted FARS variables, builds the analytic sample of accident-vehicle-drivers
 # allows several parameters to be set for selecting the analytic sample to be used
 def get_analytic_sample(df_accident,df_vehicle,df_person,first_year,last_year,earliest_hour=20, 
-                        latest_hour=4,drinking_definition='bac_test_only',bac_threshold=0,state_year_prop_threshold=1,
+                        latest_hour=4,driver_types=[['sober'],['drinking']],drinking_definition='bac_test_only',bac_threshold=0,state_year_prop_threshold=1,
                         mireps=False,summarize_sample=True,drop_below_threshold=True):
 
     sum_stats = list() # list of summary stats, generated for paper table(s)
@@ -344,14 +344,32 @@ def get_analytic_sample(df_accident,df_vehicle,df_person,first_year,last_year,ea
     analytic_sample = analytic_sample.merge(df_acc_drink_count.reset_index().set_index(['year','st_case']),how='left',on=['year','st_case'])
     analytic_sample = analytic_sample.reset_index().set_index(['year','st_case','veh_no'])    
     
-    # code driver types as types 1 & 2 in the two-type case, or 1, 2, 3, & 4 in the four-type case
+        # code driver types as types 1 & 2 in the two-type case, or 1, 2, 3, & 4 in the four-type case
     if mireps==False:
-       analytic_sample['drink_status'] = analytic_sample['drink_status'].replace({0:1, 1:2}) # driver type 1 if non-drinker, driver type 2 if drinker
-       analytic_sample = analytic_sample.rename(columns={'drink_status':'driver_type'})
+        dt_num = 1
+        for dt in driver_types: # loop over driver type definitions
+            dt_bool = True
+            for dtc in dt: # loop over each criterion for each definition
+                if dtc=='sober':
+                    dt_bool = dt_bool & (analytic_sample['drink_status']==0)
+                elif dtc=='drinking':
+                    dt_bool = dt_bool & (analytic_sample['drink_status']==1)
+            analytic_sample.loc[dt_bool,'driver_type'] = dt_num
+            dt_num+=1
     else:
-        for mirep in range(0,mireps):
-            analytic_sample['drink_status'+str(mirep+1)] = analytic_sample['drink_status'+str(mirep+1)].replace({0:1, 1:2}) # driver type 1 if non-drinker, driver type 2 if drinker
-            analytic_sample = analytic_sample.rename(columns={'drink_status'+str(mirep+1):'driver_type'+str(mirep+1)})
+        for mirep in range(0,mireps):           
+            analytic_sample['driver_type'+str(mirep+1)] = numpy.nan
+    
+            dt_num = 1
+            for dt in driver_types: # loop over driver type definitions
+                dt_bool = True
+                for dtc in dt: # loop over each criterion for each definition
+                    if dtc=='sober':
+                        dt_bool = dt_bool & (analytic_sample['drink_status'+str(mirep+1)]==0)
+                    elif dtc=='drinking':
+                        dt_bool = dt_bool & (analytic_sample['drink_status'+str(mirep+1)]==1)
+                analytic_sample.loc[dt_bool,'driver_type'+str(mirep+1)] = dt_num
+                dt_num+=1
     
     end = time.time()
     print("Time to build analytic sample: " + str(end-start))
@@ -363,7 +381,7 @@ def get_analytic_sample(df_accident,df_vehicle,df_person,first_year,last_year,ea
     
     return analytic_sample
 
-def calc_drinking_externality(df_accident,df_vehicle,df_person,df_window,equal_mixing,bac_threshold,mireps,bsreps):
+def calc_drinking_externality(df_accident,df_vehicle,df_person,df_window,equal_mixing,driver_types,bac_threshold,mireps,bsreps):
     # bootstrapping using each MI replicate, then combining results as MI estimates and MI SE: https://arxiv.org/pdf/1602.07933v1.pdf
     bac_threshold_scaled = int(bac_threshold*100) # need to scale the threshold to match how the data are stored
 
@@ -388,7 +406,7 @@ def calc_drinking_externality(df_accident,df_vehicle,df_person,df_window,equal_m
                 analytic_sample = get_analytic_sample(df_externality.merge(df_accident,on=['year','st_case']),
                         df_vehicle,df_person,(wyr-4),wyr,bac_threshold=bac_threshold,mireps=mireps,summarize_sample=False)
                 # because we're bootstrapping the entire calculation, hack fit_model by just estimating 1 bootstrap replicate
-                mod_res,model_llf,model_df_resid = estimate.fit_model(analytic_sample,equal_mixing,2,bsreps=1,mirep=(miidx+1))
+                mod_res,model_llf,model_df_resid = estimate.fit_model(analytic_sample,equal_mixing,driver_types,bsreps=1,mirep=(miidx+1))
                 df_window_estimates.at[wyr,'theta'] = mod_res[0][0][0]
                 df_window_estimates.at[wyr,'lambda'] = mod_res[0][1][0]
                 if bac_threshold!=0:

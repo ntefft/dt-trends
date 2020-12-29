@@ -35,12 +35,13 @@ df_person.set_index(['year','st_case','veh_no','per_no'],inplace=True) # set the
 window = 5 # length of estimation window
 windows_end = list(range(1987,2018,window)) # list of windows year ends
 # windows_end = list(range(2017,2018,window)) # list of windows year ends
-bsreps = 1 # bootstrap replicates for testing
+bsreps = 2 # bootstrap replicates for testing
 # bsreps = 10 # bootstrap replicates for testing
 # bsreps = 50 # bootstrap replicates for analysis
 # bsreps = 100 # bootstrap replicates for analysis
-# mireps = 2 # multiple imputation replicates, for testing
-mireps = 10 # multiple imputation replicates for analysis (FARS includes a total of 10)
+mireps = 2 # multiple imputation replicates, for testing
+# mireps = 10 # multiple imputation replicates for analysis (FARS includes a total of 10)
+driver_types = [['sober'],['drinking']]
 results_folder = 'trends\\temp' # for testing
 # results_folder = 'trends\\results' # for saving estimation results
 if not os.path.exists(results_folder):
@@ -62,7 +63,7 @@ for eyr in windows_end:
     print("Estimating model for " + str(eyr)) 
     analytic_sample = util.get_analytic_sample(df_accident,df_vehicle,df_person,(eyr-window+1),eyr,
                         bac_threshold=0,mireps=mireps,summarize_sample=False)
-    mod_res,model_llf,model_df_resid = estimate.fit_model_mi(analytic_sample,['year','state','weekend','hour'],2,bsreps,mireps)
+    mod_res,model_llf,model_df_resid = estimate.fit_model_mi(analytic_sample,['year','state','weekend','hour'],driver_types,bsreps=bsreps,mireps=mireps)
     res_fmt.append([(eyr-window+1),round(mod_res[0][0][0],2),round(mod_res[0][1][0],2),round(mod_res[0][3][0],6)])
     res_fmt.append([eyr,'('+str(round(mod_res[1][0][0],2))+')','('+str(round(mod_res[1][1][0],2))+')','('+str(format(round(mod_res[1][3][0],5),'.5f'))+')'])
 res_fmt_df = pandas.DataFrame(res_fmt,columns=['year range','theta','lambda','proportion drinking'])
@@ -74,11 +75,11 @@ for eyr in windows_end:
     print("Estimating model for " + str(eyr)) 
     analytic_sample = util.get_analytic_sample(df_accident,df_vehicle,df_person,(eyr-window+1),eyr,
                         bac_threshold=0.08,mireps=mireps,summarize_sample=False)
-    mod_res,model_llf,model_df_resid = estimate.fit_model_mi(analytic_sample,['year','state','weekend','hour'],2,bsreps,mireps)
+    mod_res,model_llf,model_df_resid = estimate.fit_model_mi(analytic_sample,['year','state','weekend','hour'],driver_types,bsreps=bsreps,mireps=mireps)
     # estimatine proportions separately so that we don't drop BAC values between 0 and 0.08
     analytic_sample_p = util.get_analytic_sample(df_accident,df_vehicle,df_person,(eyr-window+1),eyr,
                         bac_threshold=0.08,mireps=mireps,summarize_sample=False,drop_below_threshold=False)
-    mod_res_p,model_llf_p,model_df_resid_p = estimate.fit_model_mi(analytic_sample_p,['year','state','weekend','hour'],2,bsreps,mireps)
+    mod_res_p,model_llf_p,model_df_resid_p = estimate.fit_model_mi(analytic_sample_p,['year','state','weekend','hour'],driver_types,bsreps=bsreps,mireps=mireps)
     res_fmt.append([(eyr-window+1),round(mod_res[0][0][0],2),round(mod_res[0][1][0],2),round(mod_res_p[0][3][0],6)])
     res_fmt.append([eyr,'('+str(round(mod_res[1][0][0],2))+')','('+str(round(mod_res[1][1][0],2))+')','('+str(format(round(mod_res_p[1][3][0],5),'.5f'))+')'])
 res_fmt_df = pandas.DataFrame(res_fmt,columns=['year range','theta','lambda','proportion drinking'])
@@ -89,8 +90,8 @@ res_fmt_df.to_excel(results_folder + '\\table3.xlsx') # Note: should format as t
 df_window = pandas.DataFrame(data={'year':windows_end,
                                    'annual_vmt':[1924330000000,2247150000000,2560370000000,2829340000000,3003200000000,2938500000000,3208500000000],
                                     'dot_vsl':9600000}).set_index(['year'])
-mod_res0 = util.calc_drinking_externality(df_accident,df_vehicle,df_person,df_window,['year','state','weekend','hour'],0,mireps,bsreps)
-mod_res8 = util.calc_drinking_externality(df_accident,df_vehicle,df_person,df_window,['year','state','weekend','hour'],0.08,mireps,bsreps)
+mod_res0 = util.calc_drinking_externality(df_accident,df_vehicle,df_person,df_window,['year','state','weekend','hour'],driver_types,0,mireps,bsreps)
+mod_res8 = util.calc_drinking_externality(df_accident,df_vehicle,df_person,df_window,['year','state','weekend','hour'],driver_types,0.08,mireps,bsreps)
 res_fmt = list() # formatted results for table
 for idx in range(0,df_window.index.size):    
     res_fmt.append([str(df_window.index.values[idx]-window+1) + '-' + str(df_window.index.values[idx]),
@@ -107,11 +108,11 @@ res_fmt_df.to_excel(results_folder + '\\table4.xlsx') # Note: should format as t
 #         print("Estimating model for BAC threshold " + str(btp)) 
 #         analytic_sample = util.get_analytic_sample(df_accident,df_vehicle,df_person,(eyr-window+1),eyr,
 #                             bac_threshold=btp,mireps=mireps,summarize_sample=False)
-#         mod_res,model_llf,model_df_resid = estimate.fit_model_mi(analytic_sample,['year','state','weekend','hour'],2,bsreps,mireps)
+#         mod_res,model_llf,model_df_resid = estimate.fit_model_mi(analytic_sample,['year','state','weekend','hour'],driver_types,bsreps=bsreps,mireps=mireps)
 #         # estimatine proportions separately so that we don't drop BAC values between 0 and 0.08
 #         analytic_sample_p = util.get_analytic_sample(df_accident,df_vehicle,df_person,(eyr-window+1),eyr,
 #                             bac_threshold=btp,mireps=mireps,summarize_sample=False,drop_below_threshold=False)
-#         mod_res_p,model_llf_p,model_df_resid_p = estimate.fit_model_mi(analytic_sample_p,['year','state','weekend','hour'],2,bsreps,mireps)
+#         mod_res_p,model_llf_p,model_df_resid_p = estimate.fit_model_mi(analytic_sample_p,['year','state','weekend','hour'],driver_types,bsreps=bsreps,mireps=mireps)
 #         res_fmt.append([(eyr-window+1),round(mod_res[0][0][0],2),round(mod_res[0][1][0],2),round(mod_res_p[0][3][0],6)])
 #         res_fmt.append([eyr,'('+str(round(mod_res[1][0][0],2))+')','('+str(round(mod_res[1][1][0],2))+')','('+str(format(round(mod_res_p[1][3][0],5),'.5f'))+')'])
 # res_fmt_df = pandas.DataFrame(res_fmt,columns=['year range','theta','lambda','proportion drinking'])
