@@ -1,4 +1,4 @@
-# dt-trends: Drinking-and-driving in the United States from 1983-2017: comparing survey and model-based estimates of prevalence
+# Drinking-and-driving in the United States from 1983-2017
 
 This repo contains scripts implementing the code for:
 
