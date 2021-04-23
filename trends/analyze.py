@@ -4,8 +4,10 @@ Created on Fri Nov 8 2019
 
 @author: Nathan Tefft
 
-This script generates summary statistics and estimation analysis results for a nationwide trends analysis
-of Levitt and Porter (2001).
+This script generates summary statistics and estimation analysis results for:
+
+Dunn, Richard A., and Nathan W. Tefft, forthcoming. Drinking-and-driving in the United States from 1983-2017: comparing survey and model-
+based estimates of prevalence. Analytical Methods in Accident Research.
 """
 import os, pandas
 
@@ -15,7 +17,7 @@ import os, pandas
 1) The working directory.
     The user MUST set their own working directory before running the script. 
     We recommend the folder of the cloned GitHub repository.
-        For example, set the working directory to "C:\\Users\\JoeEconomist\\GitHub\\lp"
+        For example, set the working directory to "C:\\Users\\JoeEconomist\\GitHub\\lp-trends"
     Results will then be placed into the project results subfolder (specified below)
 """
 
@@ -42,8 +44,8 @@ bsreps = 2 # bootstrap replicates for testing
 mireps = 2 # multiple imputation replicates, for testing
 # mireps = 10 # multiple imputation replicates for analysis (FARS includes a total of 10)
 driver_types = [['sober'],['drinking']]
-results_folder = 'trends\\temp' # for testing
-# results_folder = 'trends\\results' # for saving estimation results
+# results_folder = 'trends\\temp' # for testing
+results_folder = 'trends\\results' # for saving estimation results
 if not os.path.exists(results_folder):
         os.makedirs(results_folder) # generate results directory, if it doesn't exist
 
@@ -100,20 +102,3 @@ for idx in range(0,df_window.index.size):
 res_fmt_df = pandas.DataFrame(res_fmt,columns=['year range','BAC > 0','BAC > 0.08'])
 res_fmt_df.to_excel(results_folder + '\\table4.xlsx') # Note: should format as text after opening Excel file
 
-# # TABLE X: Varying BAC thresholds
-# res_fmt = list() # formatted results for table
-# for eyr in windows_end:
-#     for bt in range(0,20):    
-#         btp = bt/100
-#         print("Estimating model for BAC threshold " + str(btp)) 
-#         analytic_sample = util.get_analytic_sample(df_accident,df_vehicle,df_person,(eyr-window+1),eyr,
-#                             bac_threshold=btp,mireps=mireps,summarize_sample=False)
-#         mod_res,model_llf,model_df_resid = estimate.fit_model_mi(analytic_sample,['year','state','weekend','hour'],driver_types,bsreps=bsreps,mireps=mireps)
-#         # estimatine proportions separately so that we don't drop BAC values between 0 and 0.08
-#         analytic_sample_p = util.get_analytic_sample(df_accident,df_vehicle,df_person,(eyr-window+1),eyr,
-#                             bac_threshold=btp,mireps=mireps,summarize_sample=False,drop_below_threshold=False)
-#         mod_res_p,model_llf_p,model_df_resid_p = estimate.fit_model_mi(analytic_sample_p,['year','state','weekend','hour'],driver_types,bsreps=bsreps,mireps=mireps)
-#         res_fmt.append([(eyr-window+1),round(mod_res[0][0][0],2),round(mod_res[0][1][0],2),round(mod_res_p[0][3][0],6)])
-#         res_fmt.append([eyr,'('+str(round(mod_res[1][0][0],2))+')','('+str(round(mod_res[1][1][0],2))+')','('+str(format(round(mod_res_p[1][3][0],5),'.5f'))+')'])
-# res_fmt_df = pandas.DataFrame(res_fmt,columns=['year range','theta','lambda','proportion drinking'])
-# res_fmt_df.to_excel(results_folder + '\\tableX.xlsx') # Note: should format as text after opening Excel file

@@ -4,7 +4,10 @@ Created on Fri May 10 11:41:35 2019
 
 @author: Nathan Tefft
 
-This is a collection of utility functions that are to be used for the Levitt and Porter (2001) replication.
+This is a collection of utility functions that are to be used for:
+
+Dunn, Richard A., and Nathan W. Tefft, forthcoming. Drinking-and-driving in the United States from 1983-2017: comparing survey and model-
+based estimates of prevalence. Analytical Methods in Accident Research.
 """
 # import necessary packages
 import numpy,pandas,time
@@ -283,7 +286,6 @@ def get_analytic_sample(df_accident,df_vehicle,df_person,first_year,last_year,ea
     # generate statistics for Table 4 of replication
     if summarize_sample == True:    
         print('Count of one- and two-car accidents: ')
-#        print(acc_veh_count[acc_veh_count.index.isin(analytic_sample.index)].value_counts())
         print(analytic_sample['acc_veh_count'].value_counts())
 #        for item in acc_veh_count[acc_veh_count.index.isin(analytic_sample.index)].value_counts().tolist():
         for item in analytic_sample['acc_veh_count'].value_counts().tolist():
@@ -302,9 +304,7 @@ def get_analytic_sample(df_accident,df_vehicle,df_person,first_year,last_year,ea
         if mireps == False:
             tmp_driver_veh['drink_status'] = veh_dr_drinking_status(tmp_vehicle, tmp_driver, drinking_definition, bac_threshold, mireps, drop_below_threshold)
         else:
-            # NEED TO ADD STANDARD ERRORS FOR THESE
             tmp_driver_veh = tmp_driver_veh.merge(veh_dr_drinking_status(tmp_vehicle, tmp_driver, drinking_definition, bac_threshold, mireps, drop_below_threshold),how='left',on=['year','st_case','veh_no'])
-            # For now, note that "drink_status" here is the mean across multiply imputed values for MI
             tmp_driver_veh['drink_status'] = veh_dr_drinking_status(tmp_vehicle, tmp_driver, drinking_definition, bac_threshold, mireps, drop_below_threshold).mean(axis='columns')
         tmp_driver_veh['male'] = tmp_driver_veh['sex']==1
         tmp_driver_veh['age_lt25'] = tmp_driver_veh['age'] < 25        
@@ -427,8 +427,7 @@ def calc_drinking_externality(df_accident,df_vehicle,df_person,df_window,equal_m
             # restrict only to accidents that are in the end of analysis window years
             df_externality = df_externality.reset_index().set_index(['year']).merge(df_window_estimates,on=['year']).reset_index().set_index(['year','st_case','veh_no','per_no'])
         
-            # note that many of the created variables below do not precisely handle missing values...
-            # this is because we sum them at the end, so "False" or zero values are simply not included in the sums
+            # note that for many of the created variables below,we sum them at the end, so "False" or zero values are not included in the sums
             # person identified as drinking if the majority of considered MI replicates indicate it
             df_externality['per_drinking'] = df_externality['mibac' + str(miidx+1)]>bac_threshold_scaled
             df_externality['fatality'] = (df_externality['inj_sev']==4) # is a fatality
