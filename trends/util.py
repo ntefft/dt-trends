@@ -6,8 +6,8 @@ Created on Fri May 10 11:41:35 2019
 
 This is a collection of utility functions that are to be used for:
 
-Dunn, Richard A., and Nathan W. Tefft, forthcoming. Drinking-and-driving in the United States from 1983-2017: comparing survey and model-
-based estimates of prevalence. Analytical Methods in Accident Research.
+Dunn RA & Tefft NW (2021). Drinking-and-driving in the United States from 1983-2017: comparing survey and model-based estimates of prevalence. 
+Analytic Methods in Accident Research, forthcoming.
 """
 # import necessary packages
 import numpy,pandas,time
@@ -33,7 +33,7 @@ def veh_dr_drinking_status(df_vehicle, df_driver, drinking_definition, bac_thres
         driver_bac = df_veh_driver.loc[:,'mibac1':'mibac' + str(mireps)] # replace the alcohol test result with the multiply imputed value
     
     # DRINKING DEFINITIONS
-    # police_report_only: police officer report [0 if nondrinking, 1 if drinking, 8 if not reported, 9 if unknown] (definition 1 in L&P, 2001; what LP say they use)
+    # police_report_only: police officer report [0 if nondrinking, 1 if drinking, 8 if not reported, 9 if unknown] (definition 1 in Levitt and Porter, 2001; what LP say they use)
     # any_evidence: drinking if any evidence, not drinking otherwise (definition 2 in paper; what LP actually use)
     # police_report_primary: officer report primary, missing values adjusted by BAC test (definition 3 in paper)
     # bac_test_primary: BAC test primary (definition 4 in paper)

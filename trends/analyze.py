@@ -6,8 +6,8 @@ Created on Fri Nov 8 2019
 
 This script generates summary statistics and estimation analysis results for:
 
-Dunn, Richard A., and Nathan W. Tefft, forthcoming. Drinking-and-driving in the United States from 1983-2017: comparing survey and model-
-based estimates of prevalence. Analytical Methods in Accident Research.
+Dunn RA & Tefft NW (2021). Drinking-and-driving in the United States from 1983-2017: comparing survey and model-based estimates of prevalence. 
+Analytic Methods in Accident Research, forthcoming.
 """
 import os, pandas
 
